@@ -1,0 +1,101 @@
+\documentclass[12pt,a4paper]{article}
+
+% Pacotes para idioma e codificação
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+
+% Pacotes para cores e formatação de código
+\usepackage{xcolor}
+\usepackage{listings}
+
+% ==========================================
+% CONFIGURAÇÃO DE CORES (SYNTAX HIGHLIGHTING)
+% ==========================================
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+% Configuração do pacote listings para o Python
+\lstdefinestyle{estilopython}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4,
+    % Mapeamento para garantir que os acentos nos comentários funcionem perfeitamente
+    literate={á}{{\'a}}1 {ã}{{\~a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ç}{{\c{c}}}1 {Á}{{\'A}}1 {Ã}{{\~A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1 {Ç}{{\c{C}}}1
+}
+
+\lstset{style=estilopython}
+
+% ==========================================
+% INÍCIO DO DOCUMENTO
+% ==========================================
+\begin{document}
+
+\section*{Implementação do Analisador Léxico (Lexer)}
+
+Abaixo está o código-fonte em Python responsável pela tokenização do nosso projeto. Ele utiliza expressões regulares (\texttt{re}) para converter a string bruta em uma lista de tokens estruturados.
+
+\begin{lstlisting}[language=Python, caption=Analisador Léxico em Python]
+import re
+
+# ==========================================
+# ANALISADOR LÉXICO (LEXER)
+# ==========================================
+
+TOKEN_SPECIFICATION = [
+    ('NUMBER',   r'\d+(\.\d+)?'),  # Números inteiros ou decimais
+    ('IDENT',    r'[A-Za-z_][A-Za-z0-9_]*'), # Identificadores/variáveis
+    ('POW',      r'\*\*|\^'),    # Potência (**) ou ^
+    ('PLUS',     r'\+'),           # Soma
+    ('MINUS',    r'-'),            # Subtração
+    ('MUL',      r'\*'),           # Multiplicação
+    ('DIV',      r'/'),            # Divisão
+    ('ASSIGN',   r'='),            # Atribuição
+    ('LPAREN',   r'\('),           # (
+    ('RPAREN',   r'\)'),           # )
+    ('LBRACK',   r'\['),           # [
+    ('RBRACK',   r'\]'),           # ]
+    ('LBRACE',   r'\{'),           # {
+    ('RBRACE',   r'\}'),           # }
+    ('SKIP',     r'[ \t\n]+'),     # Pular espaços e quebras de linha
+    ('MISMATCH', r'.'),            # Qualquer outro caractere inválido
+]
+
+
+def tokenize(code):
+    """Transforma o texto bruto em uma lista de tokens."""
+    tok_regex = '|'.join(f'(?P<{name}>{regex})' for name, regex in TOKEN_SPECIFICATION)
+    tokens = []
+    for mo in re.finditer(tok_regex, code):
+        kind = mo.lastgroup
+        value = mo.group()
+        if kind == 'NUMBER':
+            tokens.append(('NUMBER', float(value)))
+        elif kind == 'IDENT':
+            tokens.append(('IDENT', value))
+        elif kind == 'SKIP':
+            continue
+        elif kind == 'MISMATCH':
+            raise SyntaxError(f'Caractere inesperado: {value}')
+        else:
+            tokens.append((kind, value))
+    tokens.append(('EOF', None))  # Fim do arquivo/texto
+    return tokens
+\end{lstlisting}
+
+\end{document}
