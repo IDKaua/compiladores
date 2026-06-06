@@ -1,0 +1,270 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{booktabs}
+
+\geometry{a4paper, left=30mm, right=20mm, top=30mm, bottom=20mm}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstset{
+    language=Python,
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4
+}
+
+\titleformat{\section}{\normalfont\Large\bfseries\color{blue!70!black}}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\color{blue!50!black}}{\thesubsection}{1em}{}
+
+\title{\textbf{Documentação Técnica e Especificação do Compilador de Expressões Matemáticas}}
+\author{Desenvolvimento de Compiladores | Relatório Técnico}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este documento apresenta a análise técnica, modelagem matemática e arquitetura do compilador/interpretador de expressões matemáticas desenvolvido em Python. O sistema realiza as etapas fundamentais de análise léxica (através de expressões regulares) e análise sintática preditiva descendente recursiva (\textit{Recursive Descent Parsing}) com avaliação de expressões e persistência de variáveis em tempo de execução.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introdução e Arquitetura Global}
+A engenharia de compiladores estuda as técnicas necessárias para traduzir ou interpretar linguagens de programação de alto nível. O código analisado propõe um interpretador de expressões aritméticas baseado em uma Gramática Livre de Contexto (GLC) com prioridades de operadores e associatividade explícitas.
+
+O fluxo de dados do compilador segue uma estrutura linear dividida em:
+\begin{enumerate}
+    \item \textbf{Cadeia de Entrada:} Código fonte bruto fornecido pelo usuário.
+    \item \textbf{Analisador Léxico (Tokenizer):} Quebra a cadeia de texto em tokens tipados baseados em expressões regulares.
+    \item \textbf{Analisador Sintático (Parser):} Consome os tokens baseando-se em regras gramaticais e calcula de forma imediata o resultado semântico.
+\end{enumerate}
+
+\section{Análise Léxica (Lexer)}
+O processo de tokenização varre a string de entrada comparando-a com uma lista de padrões descritos via expressões regulares (Regex). 
+
+\subsection{Tabela de Especificação de Tokens}
+Abaixo são mapeados os tipos de tokens aceitos pelo motor do \textit{Lexer}:
+
+\begin{table}[h!]
+\centering
+\caption{Especificação de Expressões Regulares dos Tokens}
+\begin{tabular}{lll}
+\toprule
+\textbf{Token Class} & \textbf{Expressão Regular} & \textbf{Descrição} \\
+\midrule
+\texttt{NUMBER} & \verb|\d+(\.\d+)?| & Números inteiros ou de ponto flutuante \\
+\texttt{IDENT} & \verb|[A-Za-z_][A-Za-z0-9_]*| & Variáveis e Identificadores \\
+\texttt{POW} & \verb|\*\*|\verb|^\^| & Operadores de Exponenciação \\
+\texttt{PLUS} / \texttt{MINUS} & \verb|\+| / \verb|-| & Adição e Subtração \\
+\texttt{MUL} / \texttt{DIV} & \verb|\*| / \verb|/| & Multiplicação e Divisão \\
+\texttt{ASSIGN} & \verb|=| & Atribuição de variáveis \\
+\texttt{LPAREN} / \texttt{RPAREN} & \verb|\(| / \verb|\)| & Delimitadores de Parênteses \\
+\texttt{LBRACK} / \texttt{RBRACK} & \verb|\[| / \verb|\]| & Delimitadores de Colchetes \\
+\texttt{LBRACE} / \texttt{RBRACE} & \verb|\{| / \verb|\}| & Delimitadores de Chaves \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Análise Sintática e Gramática Formal}
+O \textit{Parser} utiliza uma abordagem Descendente Recursiva (\textit{Recursive Descent Parser}), onde cada nível de precedência matemática é isolado em um método específico (\texttt{expr}, \texttt{term}, \texttt{power}, \texttt{factor}).
+
+\subsection{Gramática na Notação EBNF}
+A gramática livre de contexto pode ser descrita formalmente como:
+
+\begin{align*}
+\mathit{Parse} &\rightarrow \mathit{IDENT} \ \mathbf{=} \ \mathit{Expr} \ \mid \ \mathit{Expr} \\
+\mathit{Expr} &\rightarrow \mathit{Term} \ \{ (\mathbf{+} \mid \mathbf{-}) \ \mathit{Term} \} \\
+\mathit{Term} &\rightarrow \mathit{Power} \ \{ (\mathbf{*} \mid \mathbf{/}) \ \mathit{Power} \} \\
+\mathit{Power} &\rightarrow \mathit{Factor} \ [ \mathbf{**} \mid \mathbf{\wedge} \ \mathit{Power} ] \\
+\mathit{Factor} &\rightarrow \mathit{NUMBER} \mid \mathit{IDENT} \mid \mathbf{(}\mathit{Expr}\mathbf{)} \mid \mathbf{[}\mathit{Expr}\mathbf{]} \mid \mathbf{\{}\mathit{Expr}\mathbf{\}}
+\end{align*}
+
+A regra $\mathit{Power}$ introduz a associatividade à direita, permitindo resolver corretamente cálculos encadeados como $2 \wedge 3 \wedge 2 = 2^{(3^2)} = 512$.
+
+\section{Implementação em Python}
+Abaixo encontra-se o código fonte unificado que serve como fundação estrutural deste sistema compilador:
+
+\begin{lstlisting}
+import re
+
+ENV = {}
+
+def compiler(code):
+    try:
+        tokens = tokenize(code)
+        parser = Parser(tokens, ENV)
+        return parser.parse()
+    except Exception as e:
+        return f"Erro: {e}"
+
+TOKEN_SPECIFICATION = [
+    ('NUMBER',   r'\d+(\.\d+)?'),
+    ('IDENT',    r'[A-Za-z_][A-Za-z0-9_]*'),
+    ('POW',      r'\*\*|\^'),
+    ('PLUS',     r'\+'),
+    ('MINUS',    r'-'),
+    ('MUL',      r'\*'),
+    ('DIV',      r'/'),
+    ('ASSIGN',   r'='),
+    ('LPAREN',   r'\('),
+    ('RPAREN',   r'\)'),
+    ('LBRACK',   r'\['),
+    ('RBRACK',   r'\]'),
+    ('LBRACE',   r'\{'),
+    ('RBRACE',   r'\}'),
+    ('SKIP',     r'[ \t\n]+'),
+    ('MISMATCH', r'.'),
+]
+
+def tokenize(code):
+    tok_regex = '|'.join(f'(?P<{name}>{regex})' for name, regex in TOKEN_SPECIFICATION)
+    tokens = []
+    for mo in re.finditer(tok_regex, code):
+        kind = mo.lastgroup
+        value = mo.group()
+        if kind == 'NUMBER':
+            tokens.append(('NUMBER', float(value)))
+        elif kind == 'IDENT':
+            tokens.append(('IDENT', value))
+        elif kind == 'SKIP':
+            continue
+        elif kind == 'MISMATCH':
+            raise SyntaxError(f'Caractere inesperado: {value}')
+        else:
+            tokens.append((kind, value))
+    tokens.append(('EOF', None))
+    return tokens
+
+class Parser:
+    def __init__(self, tokens, env=None):
+        self.tokens = tokens
+        self.pos = 0
+        self.current_token = self.tokens[self.pos]
+        self.env = env if env is not None else {}
+
+    def error(self, message="Erro de sintaxe"):
+        raise SyntaxError(message)
+
+    def advance(self):
+        self.pos += 1
+        if self.pos < len(self.tokens):
+            self.current_token = self.tokens[self.pos]
+
+    def eat(self, token_type):
+        if self.current_token[0] == token_type:
+            self.advance()
+        else:
+            self.error(f"Esperado {token_type}, encontrado {self.current_token[0]}")
+
+    def factor(self):
+        token = self.current_token
+        if token[0] == 'NUMBER':
+            self.eat('NUMBER')
+            return token[1]
+        elif token[0] == 'IDENT':
+            name = token[1]
+            self.eat('IDENT')
+            if name in self.env:
+                return self.env[name]
+            self.error(f"Variavel nao definida: {name}")
+        elif token[0] == 'LPAREN':
+            self.eat('LPAREN')
+            result = self.expr()
+            self.eat('RPAREN')
+            return result
+        elif token[0] == 'LBRACK':
+            self.eat('LBRACK')
+            result = self.expr()
+            self.eat('RBRACK')
+            return result
+        elif token[0] == 'LBRACE':
+            self.eat('LBRACE')
+            result = self.expr()
+            self.eat('RBRACE')
+            return result
+        self.error(f"Fator invalido: {token[1]}")
+
+    def term(self):
+        node = self.power()
+        while self.current_token[0] in ('MUL', 'DIV'):
+            op = self.current_token[0]
+            self.advance()
+            if op == 'MUL':
+                node = node * self.power()
+            elif op == 'DIV':
+                denom = self.power()
+                if denom == 0:
+                    raise ZeroDivisionError("Divisao por zero.")
+                node = node / denom
+        return node
+
+    def power(self):
+        if self.current_token[0] in ('NUMBER', 'IDENT', 'LPAREN', 'LBRACK', 'LBRACE'):
+            node = self.factor()
+            if self.current_token[0] == 'POW':
+                self.eat('POW')
+                exponent = self.power()
+                node = node ** exponent
+            return node
+        self.error(f"Fator invalido para potencia: {self.current_token}")
+
+    def expr(self):
+        node = self.term()
+        while self.current_token[0] in ('PLUS', 'MINUS'):
+            op = self.current_token[0]
+            self.advance()
+            if op == 'PLUS':
+                node = node + self.term()
+            elif op == 'MINUS':
+                node = node - self.term()
+        return node
+
+    def parse(self):
+        if self.current_token[0] == 'IDENT' and self.pos + 1 < len(self.tokens) and self.tokens[self.pos + 1][0] == 'ASSIGN':
+            name = self.current_token[1]
+            self.eat('IDENT')
+            self.eat('ASSIGN')
+            value = self.expr()
+            self.env[name] = value
+            if self.current_token[0] != 'EOF':
+                self.error("Tokens extras detectados apos atribuicao.")
+            return value
+
+        result = self.expr()
+        if self.current_token[0] != 'EOF':
+            self.error("Tokens extras detectados no fim da expressao.")
+        return result
+\end{lstlisting}
+
+\section{Conclusão}
+A arquitetura proposta demonstra viabilidade para execução confiável de expressões matemáticas aninhadas. O uso do padrão de análise descendente recursiva aliada ao encapsulamento léxico por expressões regulares confere modularidade e extensibilidade para futuras implementações, como funções nativas (\texttt{sin}, \texttt{cos}, \texttt{log}) ou blocos de controle estruturados.
+
+\end{document}
