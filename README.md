@@ -57,7 +57,7 @@ O fator aceita de forma equivalente o isolamento de expressões por Parênteses 
 Colchetes [] e Chaves {}, permitindo expressões altamente legíveis como:
 
 ```
-x = {2 * [3 + (5 ** 2)]}
+>> x = {2 * [3 + (5 ** 2)]}
 => Resultado: 56.0
 ```
 
